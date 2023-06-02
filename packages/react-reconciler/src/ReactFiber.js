@@ -87,6 +87,7 @@ import {
   StrictLegacyMode,
   StrictEffectsMode,
   ConcurrentUpdatesByDefaultMode,
+  NoStrictPassiveEffectsMode,
 } from './ReactTypeOfMode';
 import {
   REACT_FORWARD_REF_TYPE,
@@ -457,6 +458,8 @@ export function createHostRootFiber(
     mode = ConcurrentMode;
     if (isStrictMode === true || createRootStrictEffectsByDefault) {
       mode |= StrictLegacyMode | StrictEffectsMode;
+      // TODO: feature flag
+      mode |= NoStrictPassiveEffectsMode;
     }
     if (
       // We only use this flag for our repo tests to check both behaviors.
@@ -539,6 +542,8 @@ export function createFiberFromTypeAndProps(
         if ((mode & ConcurrentMode) !== NoMode) {
           // Strict effects should never run on legacy roots
           mode |= StrictEffectsMode;
+          // TODO: feature flag
+          mode |= NoStrictPassiveEffectsMode;
         }
         break;
       case REACT_PROFILER_TYPE:

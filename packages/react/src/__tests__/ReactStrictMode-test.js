@@ -18,6 +18,8 @@ let act;
 let useMemo;
 let useState;
 let useReducer;
+let useEffect;
+let useLayoutEffect;
 
 const ReactFeatureFlags = require('shared/ReactFeatureFlags');
 
@@ -32,6 +34,8 @@ describe('ReactStrictMode', () => {
     useMemo = React.useMemo;
     useState = React.useState;
     useReducer = React.useReducer;
+    useEffect = React.useEffect;
+    useLayoutEffect = React.useLayoutEffect;
   });
 
   it('should appear in the client component stack', () => {
@@ -514,6 +518,120 @@ describe('ReactStrictMode', () => {
     });
     expect(container.textContent).toBe('1');
     expect(log).toEqual(['Compute new state: 1', 'Compute new state: 1']);
+  });
+
+  it('double invokes effects', async () => {
+    let log = [];
+
+    function Component({text}) {
+      useEffect(() => {
+        log.push('useEffect mount');
+        return () => {
+          log.push('useEffect unmount');
+        };
+      }, [text]);
+
+      useLayoutEffect(() => {
+        log.push('useLayoutEffect mount');
+        return () => {
+          log.push('useLayoutEffect unmount');
+        };
+      }, [text]);
+    }
+
+    const container = document.createElement('div');
+    const root = ReactDOMClient.createRoot(container);
+
+    // Mount
+    await act(() => {
+      root.render(
+        <React.StrictMode>
+          <Component text="1" />
+        </React.StrictMode>,
+      );
+    });
+    expect(log).toEqual([
+      'useLayoutEffect mount',
+      'useEffect mount',
+      'useLayoutEffect unmount',
+      'useEffect unmount',
+      'useLayoutEffect mount',
+      'useEffect mount',
+    ]);
+
+    log = [];
+
+    // Update
+    await act(() => {
+      root.render(
+        <React.StrictMode>
+          <Component text="2" />
+        </React.StrictMode>,
+      );
+    });
+    expect(log).toEqual([
+      'useLayoutEffect unmount',
+      'useLayoutEffect mount',
+      'useEffect unmount',
+      'useEffect mount',
+    ]);
+  });
+
+  it('does not double invoke passive effect in less strict mode', async () => {
+    let log = [];
+
+    function Component({text}) {
+      useEffect(() => {
+        log.push('useEffect mount');
+        return () => {
+          log.push('useEffect unmount');
+        };
+      }, [text]);
+
+      useLayoutEffect(() => {
+        log.push('useLayoutEffect mount');
+        return () => {
+          log.push('useLayoutEffect unmount');
+        };
+      }, [text]);
+    }
+
+    const container = document.createElement('div');
+    const root = ReactDOMClient.createRoot(container);
+
+    // Mount
+    await act(() => {
+      root.render(
+        <React.StrictMode>
+          <Component text="1" />
+        </React.StrictMode>,
+      );
+    });
+    expect(log).toEqual([
+      'useLayoutEffect mount',
+      'useEffect mount',
+      'useLayoutEffect unmount',
+      //'useEffect unmount',
+      'useLayoutEffect mount',
+      //'useEffect mount',
+    ]);
+
+    log = [];
+
+    // Update
+    await act(() => {
+      root.render(
+        <React.StrictMode>
+          <Component text="2" />
+        </React.StrictMode>,
+      );
+    });
+    expect(log).toEqual([
+      'useLayoutEffect unmount',
+      'useLayoutEffect mount',
+      'useEffect unmount',
+      'useEffect mount',
+    ]);
   });
 });
 
